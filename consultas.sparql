@@ -1,0 +1,188 @@
+select ?genero_principal ?genero ?cidade ?nome 
+where 
+{
+?s a dbpedia-owl:Band .
+?s dbpedia-owl:country dbpedia-pt:Brazil .
+?s rdfs:label ?nome .
+?s dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace  .
+?c rdfs:label ?cidade .
+?s dbpedia-owl:genre ?g .
+?g rdfs:label ?genero .
+?gp dbpedia-owl:musicSubgenre ?g .
+?gp rdfs:label ?genero_principal .
+}
+order by ?genero_principal ?genero ?cidade ?nome
+
+
+select ?cidade ?genero_principal
+where 
+{
+?s a dbpedia-owl:Band ;
+   dbpedia-owl:country dbpedia-pt:Brazil ;
+   rdfs:label ?nome ;
+   dbpedia-owl:genre ?g ;
+   dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace  ;
+   rdfs:label ?cidade .
+?g rdfs:label ?genero .
+?gp dbpedia-owl:musicSubgenre ?g ;
+    rdfs:label ?genero_principal .
+}
+order by ?cidade ?genero_principal 
+
+
+
+
+select ?cidade ?genero_principal  count(?cidade)
+where 
+{
+?s a dbpedia-owl:Band ;
+   dbpedia-owl:country dbpedia:Brazil ;
+   rdfs:label ?nome ;
+   dbpedia-owl:genre ?g ;
+   dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace {?c a dbpedia-owl:City } .
+?c rdfs:label ?cidade .
+?g rdfs:label ?genero .
+?gp dbpedia-owl:musicSubgenre ?g ;
+    rdfs:label ?genero_principal .
+}
+
+order by 1 2 desc 3
+
+
+
+select ?cidade ?genero_principal  count(?cidade)
+where 
+{
+?s a dbpedia-owl:Band ;
+   dbpedia-owl:country dbpedia:England ;
+   rdfs:label ?nome ;
+   dbpedia-owl:genre ?g ;
+   dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace .
+?c rdfs:label ?cidade .
+?g rdfs:label ?genero .
+?gp dbpedia-owl:musicSubgenre ?g ;
+    rdfs:label ?genero_principal .
+}
+
+order by 1 2 desc 3
+
+
+
+
+
+select ?cidade ?genero_principal (count(*) as ?count)
+where 
+{
+?s a dbpedia-owl:Band ;
+   dbpedia-owl:hometown dbpedia:United_States ;
+   rdfs:label ?nome ;
+   dbpedia-owl:genre ?g ;
+   dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace.
+?c rdfs:label ?cidade FILTER(LANG(?cidade) = "" || LANGMATCHES(LANG(?cidade), "en")).
+?g rdfs:label ?genero FILTER(LANG(?genero) = "" || LANGMATCHES(LANG(?genero), "en")).
+?gp dbpedia-owl:musicSubgenre ?g ;
+    rdfs:label ?genero_principal FILTER(LANG(?genero_principal) = "" || LANGMATCHES(LANG(?genero_principal), "en")).
+}
+
+order by asc 1 desc 3
+
+select ?cidade ?genero_principal ?gp (count(*) as ?count)
+where 
+{
+?s a dbpedia-owl:Band ;
+  dbpedia-owl:hometown dbpedia:United_States ;
+  rdfs:label ?nome ;
+  dbpedia-owl:genre ?g ;
+  dbpedia-owl:hometown ?c .
+?c a dbpedia-owl:PopulatedPlace.
+?c rdfs:label ?cidade FILTER(LANG(?cidade) = "" || LANGMATCHES(LANG(?cidade), "en")).
+?g rdfs:label ?genero FILTER(LANG(?genero) = "" || LANGMATCHES(LANG(?genero), "en")).
+?gp dbpedia-owl:musicSubgenre ?g ;
+   rdfs:label ?genero_principal FILTER(LANG(?genero_principal) = "" || LANGMATCHES(LANG(?genero_principal), "en")).
+}
+
+order by asc 1 desc 4
+
+
+SELECT * WHERE {
+  { ?x a dbpedia-owl:PopulatedPlace .
+    ?x rdfs:label ?label FILTER(LANG(?label) = "" || LANGMATCHES(LANG(?label), "pt")) .
+    FILTER (?label = "Santos")
+  }
+  UNION
+  { ?x a dbpedia-owl:PopulatedPlace .
+    ?x rdfs:label ?label FILTER(LANG(?label) = "" || LANGMATCHES(LANG(?label), "pt")) .
+    FILTER REGEX(STR(?label), "Santos", "i")
+  }
+}
+LIMIT 100
+
+
+SELECT * WHERE {
+  { 
+    ?x a dbpedia-owl:Settlement .
+    ?x dbpedia-owl:isPartOf ?y .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "pt")) .
+    ?y rdfs:label ?statename FILTER(LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "pt")) .
+    FILTER ( REGEX(STR(?cityname), "Santos", "i") && REGEX(STR(?statename), "São Paulo", "i")  )
+  }
+  UNION
+  { 
+    ?x a dbpedia-owl:Settlement .
+    ?x dbpedia-owl:isPartOf ?y .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "en")) .
+    ?y rdfs:label ?statename FILTER(LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "en")) .
+    FILTER ( REGEX(STR(?cityname), "Santos", "i")  && REGEX(STR(?statename), "São Paulo", "i") )
+  }
+}
+LIMIT 100
+
+SELECT * WHERE {
+  { 
+    ?x a dbpedia-owl:Settlement .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "pt")) .
+
+    ?x dbpedia-owl:isPartOf ?y .
+    ?y rdfs:label ?statename FILTER(LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "pt")) .
+
+    FILTER ( REGEX(STR(?cityname), "Santos", "i")  )
+  }
+  UNION
+  { 
+    ?x a dbpedia-owl:Settlement .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "en")) .
+
+    ?x dbpedia-owl:isPartOf ?y .
+    ?y rdfs:label ?statename FILTER(LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "en")) .
+    FILTER ( REGEX(STR(?cityname), "Santos", "i")  )
+  }
+}
+LIMIT 100
+
+
+SELECT * WHERE {
+  { 
+    ?x a dbpedia-owl:Settlement .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "pt" || LANGMATCHES(LANG(?cityname), "en")) .
+
+    ?x dbpedia-owl:isPartOf ?y .
+    ?y rdfs:label ?statename FILTER(LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "pt" || LANGMATCHES(LANG(?cityname), "en")) .
+  }
+  FILTER ( REGEX(STR(?cityname), "Salvador", "i") && REGEX(STR(?statename), "Bahia", "i")   )
+}
+LIMIT 100
+
+SELECT * WHERE {
+    ?x a dbpedia-owl:Settlement .
+    ?x rdfs:label ?cityname FILTER(LANG(?cityname ) = "" || LANGMATCHES(LANG(?cityname), "pt") || LANGMATCHES(LANG(?cityname), "en") ).
+
+    ?x dbpedia-owl:isPartOf ?y .
+    ?y rdfs:label ?statename FILTER( LANG(?statename ) = "" || LANGMATCHES(LANG(?statename ), "pt") || LANGMATCHES(LANG(?statename ), "en") ).
+    FILTER ( REGEX(STR(?cityname), "Salvador", "i") && REGEX(STR(?statename), "Bahia", "i") )
+}
+LIMIT 100

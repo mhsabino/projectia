@@ -26,7 +26,6 @@
 
 		<!-- jQuery 2.1.1 -->
 		<script type="text/javascript" src="js/jquery-2.1.1.min.js"></script>
-
 		<script type="text/javascript" src="js/sparql.js"></script>
 
 		<!-- API do Last.FM -->
@@ -64,14 +63,20 @@
 				}
 			};
 
+			/********************************* Variaveis globais***********************************************************/
 			var map;
-
 			var markers = [];
-
 			var lastfm;
+			var sparqler;
 
-			//var sparqler;
+			sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
+			sparqler.addDefaultGraph('http://dbpedia.org');
+			sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
+			sparqler.setOutput("json");
 
+			/********************************* Funcões *******************************************************************/
+
+			/** Remove os marcadores do mapa*/
 			function deleteMarkers() {
 				for (var i = 0; i < markers.length; i++) {
 					markers[i].setMap(null);
@@ -79,19 +84,22 @@
 				markers = [];
 			}
 
-			/***********************************************************************************************************************************************/
 			function initialize() {
+
+				// opções iniciais do mapa
 				var mapOptions = {
 					center : new google.maps.LatLng(-34.397, 150.644),
 					zoom : 10,
 					mapTypeId : google.maps.MapTypeId.ROADMAP
 				};
+
+				// instância o mapa
 				map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
 
 				// Try W3C Geolocation (Preferred)
 				if (navigator.geolocation) {
 					navigator.geolocation.getCurrentPosition(function(position) {
-						initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+						var initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
 						map.setCenter(initialLocation);
 					});
 				}
@@ -99,7 +107,6 @@
 				map.addListener("dragend", function() {
 					Debugger.log("center_changed");
 					refreshEvents(getMapCenter(), getMapRadius());
-
 				});
 
 				map.addListener("zoom_changed", function() {
@@ -159,18 +166,17 @@
 					success : function(data) {
 
 						$('#status').text(data.events['@attr'].total + ' resultado(s) encontrado(s).');
-
 						Debugger.log(new Date() + ' - Resultado:');
 
 						/* Use data. */
 						$(data.events.event).each(function(i, e) {
 
-							var myLatlng;
-
 							if (e.venue.location['geo:point']['geo:lat'] != "") {
-								myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
+								/* Define um ponto no mapa*/
+								var myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
 							} else {
 								//TODO:  procurar no GeoNames usando SPARQL
+								var results = searchSPARQL();
 							}
 
 							var marker = new google.maps.Marker({
@@ -179,9 +185,8 @@
 								title : e.title
 							});
 
+							/*adiciona o novo marcador ao conjunto de marcadores*/
 							markers.push(marker);
-
-							//$('<li>').text(e.title + ' / ' + e.venue.location.city).appendTo('#eventos');
 							Debugger.log(e.title + ' / ' + e.venue.location.city);
 
 						});
@@ -190,6 +195,32 @@
 					error : function(code, message) {
 					}
 				});
+			}
+
+			/* retorna o resultado da consulta sparql */
+			function querySuccess(data) {
+				if (result.head.vars.length > 0) {
+					// TODO: A pesquisa retornou o resultado
+					if (data.results.bindings.length) {
+						$(data.results.bindings).each(function(i, entry) {
+							$(data.head.vars).each(function(j, field) {
+								/* Cria o marcador para cada resultado obtido */ 
+								/* Ou retorna um vetor com os resultados*/
+							});
+						});
+					}
+			}
+			
+			/* retorna erro caso a consulta sparql não seja executada corretamente */
+			function queryFails(err) {
+				console.log("Erro ao executar a consulta sparql: " + err.message);
+			}
+
+			function searchSPARQL(region, music_style) {
+				/* Consulta sparql */
+				var sparql_query = "";
+ 				var querySparql = sparqler.createQuery();
+				querySparql.query(sparql_query, querySuccess, queryFails);
 			}
 
 			/***********************************************************************************************************************************************/
@@ -204,33 +235,15 @@
 					console.log("Longitude: " + resultLocation.longitude);
 					console.log("Accuracy: " + resultLocation.accuracy);
 				}
-				
+
+				function error(err) {
+					console.log("ERRO: " + err.message);
+				}
+
 				// verifica se o navegador tem superte a geolocation
 				if (navigator.geolocation) {
-					navigator.geolocation.getCurrentPosition(success);
+					navigator.geolocation.getCurrentPosition(success, error);
 				}
-				
-				return resultLocation;
-			}
-
-			function getGeonamesLocation(locationName) {
-				var resultLocation = undefined;
-				/*
-				 var query = sparqler.createQuery();
-				 //query.addDefaultGraph('http://sws.geonames.org');
-				 query.query(
-				 'select distinct ?Concept where {[] a ?Concept} LIMIT 100',
-				 { success: function(value) {
-				 alert('ok! ' + value.results.bindings[0].Concept.value);
-				 //resultLocation = {
-				 //    latitude : value[0],
-				 //    longitude : value[1]
-				 //};
-				 },
-				 failure : function () {
-				 alert('erro sparql!');
-				 }
-				 }); */
 
 				return resultLocation;
 			}
@@ -256,8 +269,8 @@
 				var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(rad(p1.lat())) * Math.cos(rad(p2.lat())) * Math.sin(dLong / 2) * Math.sin(dLong / 2);
 				var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 				var d = R * c;
-				return d;
 				// returns the distance in meter
+				return d;
 			};
 
 			function getMapDistance() {
@@ -281,6 +294,7 @@
 			function procurar() {
 
 			}
+
 			/***********************************************************************************************************************************************/
 			$(function() {
 				initialize();

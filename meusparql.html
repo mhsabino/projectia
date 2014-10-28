@@ -1,0 +1,65 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+		<!-- jQuery 2.1.1 -->
+		<script type="text/javascript" src="js/jquery-2.1.1.min.js"></script>
+		<script type="text/javascript" src="js/sparql.js"></script>
+
+		<script type="text/javascript">
+			$(function() {
+
+				var sparqler;
+
+				sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
+				sparqler.addDefaultGraph('http://dbpedia.org');
+				sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
+
+				sparqler.setOutput("json");
+
+				$('#pesquisar').click(function() {
+					var querySparql = sparqler.createQuery();
+
+					querySparql.query($('#commandText').val(), {
+						success : function(value) {
+
+							$('#resultados').empty();
+
+							// definir as colunas
+
+							if (value.head.vars.length) {
+								tr = $('<tr>').appendTo('#resultados');
+								value.head.vars.forEach(function(entry) {
+									$('<th>').text(entry).appendTo(tr);
+								});
+							}
+
+							// valores
+
+							$('#resultados_info').text('Resultados obtidos: ' + value.results.bindings.length);
+
+							if (value.results.bindings.length) {
+
+								$(value.results.bindings).each(function(i, entry) {
+									tr = $('<tr>').appendTo('#resultados');
+									$(value.head.vars).each(function(j, field) {
+										$('<td>').text(entry[field].value).appendTo(tr);
+									});
+								});
+							}
+						},
+						failure : function() {
+							alert('erro sparql!');
+						}
+					});
+
+				});
+
+			});
+
+		</script>
+	</head>
+
+	<body>
+
+	</body>
+</html>
