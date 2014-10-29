@@ -167,16 +167,18 @@
 
 						$('#status').text(data.events['@attr'].total + ' resultado(s) encontrado(s).');
 						Debugger.log(new Date() + ' - Resultado:');
-
+						
+						var myLatlng;
+						
 						/* Use data. */
 						$(data.events.event).each(function(i, e) {
-
+		
 							if (e.venue.location['geo:point']['geo:lat'] != "") {
 								/* Define um ponto no mapa*/
-								var myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
+								myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
 							} else {
 								//TODO:  procurar no GeoNames usando SPARQL
-								var results = searchSPARQL();
+								//var results = searchSPARQL();
 							}
 
 							var marker = new google.maps.Marker({
@@ -209,6 +211,7 @@
 							});
 						});
 					}
+				}
 			}
 			
 			/* retorna erro caso a consulta sparql não seja executada corretamente */
@@ -299,7 +302,7 @@
 			$(function() {
 				initialize();
 				Debugger.debugMode = true;
-				var initLocation = getCurrentLocation();
+				initLocation = getCurrentLocation();
 				refreshEvents(initLocation, getMapRadius());
 				$('#procurarB').click(procurar);
 			});
