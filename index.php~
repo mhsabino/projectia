@@ -177,7 +177,7 @@
 								var myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
 							} else {
 								//TODO:  procurar no GeoNames usando SPARQL
-								//var results = searchSPARQL();
+								var results = searchSPARQL();
 							}
 
 							var marker = new google.maps.Marker({
