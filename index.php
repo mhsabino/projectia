@@ -205,7 +205,7 @@
 					// TODO: A pesquisa retornou o resultado
 					if (data.results.bindings.length) {
 						$(data.results.bindings).each(function(i, entry) {
-							$(data.head.vars).each(function(j, field) {
+							$(data.results.vars).each(function(j, field) {
 								/* Cria o marcador para cada resultado obtido */ 
 								/* Ou retorna um vetor com os resultados*/
 							});
