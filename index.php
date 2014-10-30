@@ -3,7 +3,8 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-
+        <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+        
 		<style type="text/css">
 			html {
 				height: 100%;
@@ -12,16 +13,33 @@
 			body {
 				height: 100%;
 				margin: 0;
-				padding: 0
+				padding: 0;
+                font-family: 'Open Sans', sans-serif;
 			}
+            
+            #topBar
+            {
+                padding: 0.8em;
+            }
+            #topBar span
+            {
+                margin-left: 0.3em;
+                margin-right: 0.5em;
+            }
 
 			#map_canvas {
 				/*display: none;*/
 			}
 
-			.status {
+			.status, .debugmode {
 				float: right;
+                margin-left: 1em;
 			}
+            
+            input[type=text]
+            {
+                padding: 0.3em;
+            }
 		</style>
 
 		<!-- jQuery 2.1.1 -->
@@ -205,8 +223,8 @@
                 
                 sparqler : null,
                 
-                initialize: function() {
-                    this.sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
+                initialize: function(sparqlEndpoint) {
+                    this.sparqler = new SPARQL.Service(sparqlEndpoint);
                     this.sparqler.addDefaultGraph('http://dbpedia.org');
                     //sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
                     this.sparqler.setOutput("json");
@@ -256,7 +274,7 @@
                 
                 Mapa.initialize();                
                 LastFMSvc.initialize();                
-                Sparqler.initialize();                
+                Sparqler.initialize($('#endpoint').val());                
 			}
             
             function addInfoDiv(marker, event, data)
@@ -300,7 +318,7 @@
 
                                 addInfoDiv(Mapa.putMarker({ 
                                     title : event.title,
-                                    //icon : {path: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'},
+                                    icon : 'img/green-dot.png',
                                     position : new google.maps.LatLng(event.venue.location['geo:point']['geo:lat'], 
                                                                       event.venue.location['geo:point']['geo:long'])
                                 }), event, data);
@@ -375,7 +393,7 @@
 				Debugger.putCircle();
 
 				params = {
-					limit : 50,
+					limit : $('#limite').val(),
 					lat : 0,
 					long : 0,
 					distance : 0
@@ -399,13 +417,15 @@
 			/***********************************************************************************************************************************************/
 			$(function() {
 				initialize();
-				Debugger.debugMode = true;
+				Debugger.debugMode = $('#debugmodeCk').prop('checked');
 				
                 /*initLocation = getCurrentLocation();
 				
                 refreshEvents(initLocation, getMapRadius());
 */
                 $('#procurarB').click(function() { 
+                    Debugger.debugMode = $('#debugmodeCk').prop('checked');
+                    Sparqler.initialize($('#endpoint').val());  
                     refreshEvents(Mapa.getMapCenter(), Mapa.getMapRadius()); 
                 });
 			});
@@ -413,10 +433,13 @@
 	</head>
 	<body>
 
-		<fieldset>
+		<fieldset id="topBar">
 			<!--<input type="text" placeholder="cidade, pais, etc" id="local" />-->
-			Genero Musical <input type="text" placeholder="rock, jazz, samba ..." id="genero" />
+			<span>Genero Musical <input type="text" placeholder="rock, jazz, samba ..." id="genero" style="width: 200px;" /></span>
+            <span>Limite <input type="text" id="limite" value="30" style="width: 50px" /></span>
 			<input type="button" value="Procurar" id="procurarB" />
+            <span class="status"><input type="text" placeholder="http://sparql.org/sparql" id="endpoint" style="width: 200px;" value="http://dbpedia.org/sparql" /></span>
+            <div class="debugmode"><input type="checkbox" id="debugmodeCk" checked="false" >Modo de depuração</input></div>            
 			<div id="status" class="status">
 				Pronto
 			</div>
