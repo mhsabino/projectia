@@ -43,10 +43,10 @@
 
 				putCircle : function() {
 					if (this.debugMode && this.debugCircle) {
-						markers.push(new google.maps.Circle({
-							center : map.getCenter(),
-							radius : getMapRadius() * 1000,
-							map : map,
+						Mapa.markers.push(new google.maps.Circle({
+							center : Mapa.map.getCenter(),
+							radius : Mapa.getMapRadius() * 1000,
+							map : Mapa.map,
 							strokeColor : '#FF0000',
 							strokeOpacity : 0.5,
 							strokeWeight : 2,
@@ -62,90 +62,320 @@
 					}
 				}
 			};
+            
+            /*** Mapa ********************************************************************************************************************************/
+            var Mapa = {
+                map : null,
+                markers : [],
+                
+                initialize : function() {
+                    // opções iniciais do mapa
+                    var mapOptions = {
+                        center : new google.maps.LatLng(-34.397, 150.644),
+                        zoom : 10,
+                        mapTypeId : google.maps.MapTypeId.ROADMAP
+                    };
 
-			/********************************* Variaveis globais***********************************************************/
-			var map;
-			var markers = [];
-			var lastfm;
-			var sparqler;
+                    // instância o mapa
+                    this.map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
 
-			sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
-			sparqler.addDefaultGraph('http://dbpedia.org');
-			sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
-			sparqler.setOutput("json");
+                    // Try W3C Geolocation (Preferred)
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            var initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                            Mapa.map.setCenter(initialLocation);
+                        });
+                    }
+
+                    /*
+                    map.addListener("dragend", function() {
+                        Debugger.log("center_changed");
+                        refreshEvents(getMapCenter(), getMapRadius());
+                    });
+
+                    map.addListener("zoom_changed", function() {
+                        Debugger.log("zoom_changed");
+                        refreshEvents(getMapCenter(), getMapRadius());
+
+                    });  */                   
+                },
+                
+                
+                /* colocar um marcador no map */
+                putMarker : function(params) {
+                    
+                    params['map'] = this.map;
+                    
+                    // criar o marcador
+                    marker = new google.maps.Marker(params);
+
+                    // adiciona o novo marcador ao conjunto de marcadores
+                    this.markers.push(marker);
+                    
+                    return marker;
+                },
+                
+                removeMarker : function(index) {
+                    this.markers[index].setMap(null);
+                    this.markers.splice(index, 1);
+                },
+                
+                deleteMarkers : function() {
+                    for (var i = 0; i < this.markers.length; i++) {
+                        this.markers[i].setMap(null);
+                    }
+                    this.markers = [];
+                },
+                
+                getMapCenter : function () {
+                    return {
+                        coords : {
+                            latitude : this.map.getCenter().lat(),
+                            longitude : this.map.getCenter().lng()
+                        }
+                    };
+                },
+
+                getMapDistance : function () {
+                    function getDistance(p1, p2) {
+
+                        function rad(x) {
+                            return x * Math.PI / 180;
+                        };
+
+                        var R = 6378137;
+                        // Earth’s mean radius in meter
+                        var dLat = rad(p2.lat() - p1.lat());
+                        var dLong = rad(p2.lng() - p1.lng());
+                        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + 
+                                Math.cos(rad(p1.lat())) * Math.cos(rad(p2.lat())) * Math.sin(dLong / 2) * Math.sin(dLong / 2);
+                        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                        var d = R * c;
+                        // returns the distance in meter
+                        return d;
+                    };                              
+                    
+                    var pos_inicial = new google.maps.LatLng(this.map.getBounds().getSouthWest().lat(), this.map.getCenter().lng());
+                    var pos_final = new google.maps.LatLng(this.map.getBounds().getNorthEast().lat(), this.map.getCenter().lng());
+
+                    return getDistance(pos_inicial, pos_final);
+                },
+                
+                getMapRadius : function () {
+
+                    dist = this.getMapDistance() * 1.5 / 1000 / 2;
+
+                    // limitar em 100km
+                    if (dist > 100) {
+                        dist = 100;
+                    }
+
+                    //Debugger.log('getMapRadius: ' + dist);
+                    return dist;
+                }    
+            }
+
+            /*** LastFMSvc **************************************************************************************************************************/
+            var LastFMSvc = {
+                
+                lastfm : null,
+                
+                initialize : function() {                    
+                    // Create a cache object
+                    cache = new LastFMCache();
+
+                    // Create a LastFM object
+                    this.lastfm = new LastFM({
+                        apiKey : '83f4027ae14bb9a53a2f83a16f62d795',
+                        apiSecret : '5861a37f79df7ab6bdf808ff0ef24da9',
+                        cache : cache
+                    });
+                },
+                
+                procurarEventos : function(params, successCallback, errorCallback) {
+                    this.lastfm.geo.getEvents(params, {
+                        success : successCallback,
+                        error : errorCallback
+                    });
+                }
+            }
+            
+            /*** Sparqler ***************************************************************************************************************************/
+            var Sparqler = { 
+                
+                sparqler : null,
+                
+                initialize: function() {
+                    this.sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
+                    this.sparqler.addDefaultGraph('http://dbpedia.org');
+                    //sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
+                    this.sparqler.setOutput("json");
+                },
+                
+                consultar : function(queryString, successCallback, failCallback) {
+                    queryOptions = { 
+                        success : successCallback, 
+                        failure : failCallback
+                    };
+                    
+                    querySparql = this.sparqler.createQuery();
+                    querySparql.query(queryString, queryOptions);
+                }
+            }
+            
+			/***********************************************************************************************************************************************/
+                    
+			function getCurrentLocation() {
+
+				var resultLocation = undefined;
+
+				function success(position) {
+					resultLocation = position.coords;
+					Debugger.log("Latitude: " + resultLocation.latitude);
+					Debugger.log("Longitude: " + resultLocation.longitude);
+					Debugger.log("Accuracy: " + resultLocation.accuracy);
+				}
+
+				function error(err) {
+					console.log("ERRO: " + err.message);
+				}
+
+				// verifica se o navegador tem superte a geolocation
+				if (navigator.geolocation) {
+					navigator.geolocation.getCurrentPosition(success, error);
+				}
+
+				return resultLocation;
+			}        
 
 			/********************************* Funcões *******************************************************************/
 
-			/** Remove os marcadores do mapa*/
-			function deleteMarkers() {
-				for (var i = 0; i < markers.length; i++) {
-					markers[i].setMap(null);
-				}
-				markers = [];
-			}
-
 			function initialize() {
-
-				// opções iniciais do mapa
-				var mapOptions = {
-					center : new google.maps.LatLng(-34.397, 150.644),
-					zoom : 10,
-					mapTypeId : google.maps.MapTypeId.ROADMAP
-				};
-
-				// instância o mapa
-				map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
-
-				// Try W3C Geolocation (Preferred)
-				if (navigator.geolocation) {
-					navigator.geolocation.getCurrentPosition(function(position) {
-						var initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-						map.setCenter(initialLocation);
-					});
-				}
-
-				map.addListener("dragend", function() {
-					Debugger.log("center_changed");
-					refreshEvents(getMapCenter(), getMapRadius());
-				});
-
-				map.addListener("zoom_changed", function() {
-					Debugger.log("zoom_changed");
-					refreshEvents(getMapCenter(), getMapRadius());
-
-				});
-
-				/* Create a cache object */
-				var cache = new LastFMCache();
-
-				/* Create a LastFM object */
-				lastfm = new LastFM({
-					apiKey : '83f4027ae14bb9a53a2f83a16f62d795',
-					apiSecret : '5861a37f79df7ab6bdf808ff0ef24da9',
-					cache : cache
-				});
-
-				/* ///sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
-				 sparqler = new SPARQL.Service("http://dbpedia.org/sparql");
-				 sparqler.addDefaultGraph('http://dbpedia.org/');
-
-				 sparqler.setPrefix("owl","http://www.w3.org/2002/07/owl#");
-				 sparqler.setPrefix("dbpedia", "http://dbpedia.org/resource/");
-				 sparqler.setPrefix("dbpedia-owl", "http://dbpedia.org/ontology/");
-				 sparqler.setPrefix("dbpprop", "http://dbpedia.org/property/");
-				 sparqler.setPrefix("geonames", "http://www.geonames.org/ontology#");
-
-				 sparqler.setOutput("json");*/
+                
+                // inicializar os controles
+                
+                Mapa.initialize();                
+                LastFMSvc.initialize();                
+                Sparqler.initialize();                
 			}
+            
+            function addInfoDiv(marker, event, data)
+            {
+                infoDiv = $('<div>').addClass('info-event');
+                
+                $('<h3>').text(event.title).appendTo(infoDiv);
+                $('<p>').text('Artista: ' + event.artists.headliner).appendTo(infoDiv);
+                $('<p>').text('Data: ' + event['startDate']).appendTo(infoDiv);
+                $('<p>').text('Local: ' + event['venue']['name']).appendTo(infoDiv);
+                
+                generos = '';
+                $(data.results.bindings).each(function(i, e){
+                   generos = generos + e['genero']['value'] + ', ';
+                });
+                 $('<p>').text('Generos: ' + generos).appendTo(infoDiv);
+                
+                
+                var infowindow = new google.maps.InfoWindow({
+                  content: $(infoDiv).html(),
+                  maxWidth : 300  
+                });
+
+                google.maps.event.addListener(marker, 'click', function() {
+                    infowindow.open(Mapa.map,marker);
+                });
+            }
 
 			/***********************************************************************************************************************************************/
 			function refreshEvents(geolocation, distance) {
-				$('#eventos').empty();
-				deleteMarkers();
+                
+                function successPesquisa(data) {
+
+                    function searchDBPediaArtist(artist, genre, event) {
+                
+                        /* retorna o resultado da consulta sparql */
+                        function querySuccess(data) {
+                            // verificar a pesquisa retornou resultados
+                            if (data.results.bindings.length > 0) {
+                                //Debugger.log('resultados encontrados!');
+
+                                addInfoDiv(Mapa.putMarker({ 
+                                    title : event.title,
+                                    //icon : {path: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'},
+                                    position : new google.maps.LatLng(event.venue.location['geo:point']['geo:lat'], 
+                                                                      event.venue.location['geo:point']['geo:long'])
+                                }), event, data);
+                                
+                                //addInfoDiv(marker, event, data);
+                                    
+                            } // if
+                            else {
+                                
+                                if (Debugger.debugMode) {
+                                    // se estiver em modo de depuracao, colocar o marcador "mais claro"
+                                    // pois indica que eh um resultado indesejado
+                                    Mapa.putMarker({ 
+                                        title : event.title,
+                                        //icon : {path: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'},
+                                        position : new google.maps.LatLng(event.venue.location['geo:point']['geo:lat'], 
+                                                                          event.venue.location['geo:point']['geo:long']),
+                                        opacity : 0.4
+                                    });
+                                }
+                            }
+                        } // function
+
+                        /* retorna erro caso a consulta sparql não seja executada corretamente */
+                        function queryFails(err) {
+                            Debugger.log("Erro ao executar a consulta sparql: " + err.message);
+                        }
+
+                        //eventPosition = ;                        
+                        
+                        /* Consulta sparql */
+                        queryString = 'select distinct * \
+                                        where \
+                                        { \
+                                          { ?x a dbpedia-owl:MusicalArtist } UNION { ?x a dbpedia-owl:Band  } . \
+                                          ?x rdfs:label ?nome FILTER ( regex(?nome, "'+artist+'", "i") && LANGMATCHES(LANG(?nome), "pt") ) . \
+                                          ?x dbpedia-owl:genre ?g . \
+                                          ?g rdfs:label ?genero FILTER ( regex(?genero, "'+genre+'", "i") && LANGMATCHES(LANG(?genero), "pt") ) . \
+                                        }';
+
+                        Sparqler.consultar(queryString, querySuccess, queryFails);
+                    } // function
+
+                    $('#status').text(data.events['@attr'].total + ' resultado(s) encontrado(s).');
+                    Debugger.log(new Date() + ' - Resultado:');            
+
+                    /* Use data. */
+                    $(data.events.event).each(function(i, e) {
+
+                        if (e.venue.location['geo:point']['geo:lat'] != "") {
+
+                            searchDBPediaArtist(e.artists.headliner, $('#genero').val(), e);
+                            
+                            Debugger.log(e.title + ' / ' + e.venue.location.city);
+                        }
+                    });
+                    
+                    /*
+                    if (data.events['@attr'].page < data.events['@attr'].totalPages) {
+                        params['page'] = data.events['@attr'].page + 1;
+                        LastFMSvc.procurarEventos(params, successPesquisa, errorPesquisa);
+                    }
+                    */
+
+                };
+
+                function errorPesquisa(code, message) {
+                    console.log('Erro no retorno do Last.FM! Codigo: '+code+' Mensagem: '+message);
+                }
+                
+				Mapa.deleteMarkers();
 				Debugger.putCircle();
 
 				params = {
-					limit : 10,
+					limit : 50,
 					lat : 0,
 					long : 0,
 					distance : 0
@@ -161,167 +391,36 @@
 				}
 
 				$('#status').text('Procurando...');
-
-				lastfm.geo.getEvents(params, {
-					success : function(data) {
-
-						$('#status').text(data.events['@attr'].total + ' resultado(s) encontrado(s).');
-						Debugger.log(new Date() + ' - Resultado:');
-						
-						var myLatlng;
-						
-						/* Use data. */
-						$(data.events.event).each(function(i, e) {
-		
-							if (e.venue.location['geo:point']['geo:lat'] != "") {
-								/* Define um ponto no mapa*/
-								myLatlng = new google.maps.LatLng(e.venue.location['geo:point']['geo:lat'], e.venue.location['geo:point']['geo:long']);
-							} else {
-								//TODO:  procurar no GeoNames usando SPARQL
-								//var results = searchSPARQL();
-							}
-
-							var marker = new google.maps.Marker({
-								position : myLatlng,
-								map : map,
-								title : e.title
-							});
-
-							/*adiciona o novo marcador ao conjunto de marcadores*/
-							markers.push(marker);
-							Debugger.log(e.title + ' / ' + e.venue.location.city);
-
-						});
-
-					},
-					error : function(code, message) {
-					}
-				});
-			}
-
-			/* retorna o resultado da consulta sparql */
-			function querySuccess(data) {
-				if (result.head.vars.length > 0) {
-					// TODO: A pesquisa retornou o resultado
-					if (data.results.bindings.length) {
-						$(data.results.bindings).each(function(i, entry) {
-							$(data.results.vars).each(function(j, field) {
-								/* Cria o marcador para cada resultado obtido */ 
-								/* Ou retorna um vetor com os resultados*/
-							});
-						});
-					}
-				}
-			}
-			
-			/* retorna erro caso a consulta sparql não seja executada corretamente */
-			function queryFails(err) {
-				console.log("Erro ao executar a consulta sparql: " + err.message);
-			}
-
-			function searchSPARQL(region, music_style) {
-				/* Consulta sparql */
-				var sparql_query = "";
- 				var querySparql = sparqler.createQuery();
-				querySparql.query(sparql_query, querySuccess, queryFails);
-			}
-
-			/***********************************************************************************************************************************************/
-
-			function getCurrentLocation() {
-
-				var resultLocation = undefined;
-
-				function success(position) {
-					resultLocation = position.coords;
-					console.log("Latitude: " + resultLocation.latitude);
-					console.log("Longitude: " + resultLocation.longitude);
-					console.log("Accuracy: " + resultLocation.accuracy);
-				}
-
-				function error(err) {
-					console.log("ERRO: " + err.message);
-				}
-
-				// verifica se o navegador tem superte a geolocation
-				if (navigator.geolocation) {
-					navigator.geolocation.getCurrentPosition(success, error);
-				}
-
-				return resultLocation;
-			}
-
-			function getMapCenter() {
-				return {
-					coords : {
-						latitude : map.getCenter().lat(),
-						longitude : map.getCenter().lng()
-					}
-				};
-			}
-
-			var rad = function(x) {
-				return x * Math.PI / 180;
-			};
-
-			var getDistance = function(p1, p2) {
-				var R = 6378137;
-				// Earth’s mean radius in meter
-				var dLat = rad(p2.lat() - p1.lat());
-				var dLong = rad(p2.lng() - p1.lng());
-				var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(rad(p1.lat())) * Math.cos(rad(p2.lat())) * Math.sin(dLong / 2) * Math.sin(dLong / 2);
-				var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-				var d = R * c;
-				// returns the distance in meter
-				return d;
-			};
-
-			function getMapDistance() {
-				var pos_inicial = new google.maps.LatLng(map.getBounds().getSouthWest().lat(), map.getCenter().lng());
-				var pos_final = new google.maps.LatLng(map.getBounds().getNorthEast().lat(), map.getCenter().lng());
-
-				return getDistance(pos_inicial, pos_final);
-			}
-
-			function getMapRadius() {
-				var dist = getMapDistance() / 1000 / 2;
-				if (dist > 100) {
-					dist = 100;
-				}
-
-				Debugger.log('getMapRadius: ' + dist);
-				return dist;
-			}
-
-			/***********************************************************************************************************************************************/
-			function procurar() {
-
-			}
+                
+                LastFMSvc.procurarEventos(params, successPesquisa, errorPesquisa);
+                
+			} // function
 
 			/***********************************************************************************************************************************************/
 			$(function() {
 				initialize();
 				Debugger.debugMode = true;
-				initLocation = getCurrentLocation();
-				refreshEvents(initLocation, getMapRadius());
-				$('#procurarB').click(procurar);
+				
+                /*initLocation = getCurrentLocation();
+				
+                refreshEvents(initLocation, getMapRadius());
+*/
+                $('#procurarB').click(function() { 
+                    refreshEvents(Mapa.getMapCenter(), Mapa.getMapRadius()); 
+                });
 			});
 		</script>
 	</head>
 	<body>
 
 		<fieldset>
-			<input type="text" placeholder="cidade, pais, etc" id="local" />
-			<input type="text" placeholder="gênero musical" id="genero" />
+			<!--<input type="text" placeholder="cidade, pais, etc" id="local" />-->
+			Genero Musical <input type="text" placeholder="rock, jazz, samba ..." id="genero" />
 			<input type="button" value="Procurar" id="procurarB" />
 			<div id="status" class="status">
 				Pronto
 			</div>
 		</fieldset>
-		<!--
-		<ul id="eventos">
-		</ul>
-		-->
 		<div id="map_canvas" style="width:100%; height:100%"></div>
 
 	</body>
